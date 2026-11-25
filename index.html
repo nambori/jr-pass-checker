@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JR Pass Verdict Checker — Is the Japan Rail Pass Worth It?</title>
+<meta name="description" content="Free checker: enter your train rides in Japan and get a BUY / SKIP / TOSS-UP verdict on the nationwide JR Pass, with the estimated cost difference in yen.">
+<style>
+  :root{
+    --ink:#1a2332; --muted:#5b6b82; --line:#d9e0ea; --bg:#f4f6f9; --card:#ffffff;
+    --accent:#0b5fa5; --accent-dark:#084a82;
+    --buy:#15803d; --buy-bg:#e7f6ec;
+    --toss:#b45309; --toss-bg:#fdf3e3;
+    --skip:#b91c1c; --skip-bg:#fdecec;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+       background:var(--bg); color:var(--ink); line-height:1.5; -webkit-text-size-adjust:100%;}
+  .wrap{max-width:720px; margin:0 auto; padding:20px 16px 48px;}
+  header{text-align:center; padding:18px 4px 8px;}
+  header .kicker{font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:700;}
+  h1{font-size:30px; line-height:1.2; margin:8px 0 10px;}
+  header p{color:var(--muted); font-size:16px; max-width:560px; margin:0 auto;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+        padding:18px 16px; margin-top:18px; box-shadow:0 1px 3px rgba(16,42,80,.05);}
+  .card h2{font-size:17px; margin-bottom:12px;}
+  .card h2 .sub{display:block; font-size:13px; color:var(--muted); font-weight:400; margin-top:2px;}
+  /* travelers */
+  .party{display:flex; gap:12px; flex-wrap:wrap;}
+  .party .field{flex:1 1 150px;}
+  label{display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:5px;}
+  select,input[type="date"],input[type="number"]{
+    width:100%; font-size:16px; padding:10px; border:1px solid var(--line); border-radius:9px;
+    background:#fff; color:var(--ink); appearance:none;}
+  .note{font-size:13px; color:var(--muted); margin-top:10px;}
+  .channel-field{margin-top:16px; border-top:1px solid var(--line); padding-top:14px;}
+  /* legs */
+  .leg{border:1px solid var(--line); border-radius:11px; padding:12px; margin-bottom:12px; background:#fbfcfe;}
+  .leg-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .leg-head .leg-title{font-weight:700; font-size:14px;}
+  .leg-remove{border:none; background:none; color:var(--skip); font-size:14px; font-weight:600; cursor:pointer; padding:4px 6px;}
+  .leg-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .leg-grid .full{grid-column:1 / -1;}
+  .leg-fare{margin-top:10px; font-size:14px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;}
+  .leg-fare .amt{font-weight:700;}
+  .leg-warn{margin-top:8px; font-size:13px; color:var(--toss); background:var(--toss-bg);
+            border-radius:8px; padding:7px 9px;}
+  .btn{display:inline-block; border:none; cursor:pointer; font-weight:700; border-radius:10px;
+       padding:12px 18px; font-size:16px; text-align:center; text-decoration:none;}
+  .btn-add{background:#e8f1f9; color:var(--accent-dark); width:100%;}
+  .btn-add:active{background:#d7e8f6;}
+  /* results */
+  #results{display:none;}
+  .verdict-banner{border-radius:var(--radius); padding:22px 16px; text-align:center; margin-top:18px;}
+  .verdict-banner .verdict-word{font-size:44px; font-weight:800; letter-spacing:.02em; line-height:1.1;}
+  .verdict-banner .verdict-head{font-size:17px; font-weight:600; margin-top:6px;}
+  .verdict-banner .verdict-diff{font-size:15px; margin-top:6px;}
+  .verdict-buy{background:var(--buy-bg); color:var(--buy);}
+  .verdict-toss{background:var(--toss-bg); color:var(--toss);}
+  .verdict-skip{background:var(--skip-bg); color:var(--skip);}
+  .verdict-banner .verdict-head,.verdict-banner .verdict-diff{color:var(--ink);}
+  .totals{display:flex; gap:12px; margin-top:14px; flex-wrap:wrap;}
+  .totals .tbox{flex:1 1 180px; background:#fbfcfe; border:1px solid var(--line); border-radius:11px; padding:12px;}
+  .totals .tbox .tlabel{font-size:13px; color:var(--muted); font-weight:600;}
+  .totals .tbox .tamt{font-size:21px; font-weight:800; margin-top:2px;}
+  .pass-row{border:1px solid var(--line); border-radius:11px; padding:12px; margin-top:10px; background:#fff;}
+  .pass-row.best{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset;}
+  .pass-row .prow-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .pass-row .pname{font-weight:800; font-size:16px;}
+  .pass-row .pname .best-tag{font-size:11px; background:var(--accent); color:#fff; border-radius:20px;
+                             padding:2px 8px; margin-left:7px; vertical-align:2px; font-weight:700;}
+  .pass-row .pdiff{font-weight:800; font-size:16px;}
+  .pass-row .pmeta{font-size:13.5px; color:var(--muted); margin-top:5px;}
+  .pos{color:var(--buy);} .neg{color:var(--skip);}
+  /* CTA */
+  .cta{background:linear-gradient(135deg,#0b5fa5,#084a82); color:#fff; border-radius:var(--radius);
+       padding:22px 18px; margin-top:22px; text-align:center;}
+  .cta h2{font-size:21px; margin-bottom:8px;}
+  .cta p{font-size:15px; opacity:.95;}
+  .cta ul{text-align:left; max-width:440px; margin:14px auto; padding-left:20px; font-size:15px;}
+  .cta ul li{margin:5px 0;}
+  .btn-cta{background:#ffb020; color:#3a2703; font-size:18px; padding:14px 26px; margin-top:8px;
+           box-shadow:0 3px 10px rgba(0,0,0,.25);}
+  .cta .price-note{font-size:13px; margin-top:10px; opacity:.85;}
+  footer{margin-top:26px; font-size:12.5px; color:var(--muted); line-height:1.6;}
+  footer p{margin-bottom:8px;}
+  .howto{font-size:14px; color:var(--muted);}
+  .howto li{margin:4px 0 4px 18px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Free Tool</div>
+    <h1>Is the JR Pass Worth It?</h1>
+    <p>Enter the train rides you plan to take in Japan. This checker adds up the individual
+       ticket prices, finds the best day to start a nationwide Japan Rail Pass, and gives you a
+       clear verdict: <strong>BUY</strong>, <strong>SKIP</strong>, or <strong>TOSS-UP</strong>.</p>
+  </header>
+
+  <div class="card">
+    <h2>Who is traveling?</h2>
+    <div class="party">
+      <div class="field">
+        <label for="adults">Adults (12+)</label>
+        <input type="number" id="adults" min="1" max="10" value="1" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="children">Children (6–11)</label>
+        <input type="number" id="children" min="0" max="10" value="0" inputmode="numeric">
+      </div>
+    </div>
+    <p class="note">Child fares are half the adult fare (rounded down to the nearest ¥10), and child
+       passes cost about half too — the same rules the official pass uses. Children under 6 ride free
+       and don't need a pass.</p>
+    <div class="channel-field">
+      <label for="channel">Where will you buy the pass?</label>
+      <select id="channel">
+        <option value="seller" selected>Authorized seller / travel agency — standard price (7-day pass: ¥53,000)</option>
+        <option value="official">Official JR Pass website — offer price (7-day pass: ¥50,000)</option>
+      </select>
+      <p class="note">The same pass is sold at two prices. The official website is currently selling
+         at the pre-increase prices as a limited-time offer (end date not announced), while authorized
+         sellers charge the standard prices — a gap of ¥3,000–5,000 per pass. That gap is larger than
+         this checker's ±¥2,000 "too close to call" band, so where you buy can flip the verdict.
+         Pick your route and the math below follows it.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Your train rides
+      <span class="sub">Add every long-distance ride you plan. A sample trip is pre-filled — edit or delete it freely.</span>
+    </h2>
+    <div id="legs"></div>
+    <button class="btn btn-add" id="addLeg" type="button">+ Add a ride</button>
+    <p class="note">This free checker covers the most popular long-distance routes between the stations
+       listed. Riding the Nozomi or Mizuho (the fastest trains) with a pass requires the separate
+       NOZOMI MIZUHO Ticket — that supplement is included in the math below.</p>
+  </div>
+
+  <div id="results">
+    <div class="verdict-banner" id="verdictBanner">
+      <div class="verdict-word" id="verdictWord">—</div>
+      <div class="verdict-head" id="verdictHead"></div>
+      <div class="verdict-diff" id="verdictDiff"></div>
+    </div>
+
+    <div class="card">
+      <h2>The numbers behind the verdict</h2>
+      <div class="totals">
+        <div class="tbox">
+          <div class="tlabel">Individual tickets (everyone, all rides)</div>
+          <div class="tamt" id="totalIndividual">¥0</div>
+        </div>
+        <div class="tbox">
+          <div class="tlabel">Best pass option (pass + any rides outside the window)</div>
+          <div class="tamt" id="totalWithPass">¥0</div>
+        </div>
+      </div>
+      <div id="passRows"></div>
+      <p class="note">A difference within ±¥2,000 counts as a TOSS-UP: at that point, the pass's
+         flexibility (hop on almost any JR train without buying tickets each time) may be worth more
+         than the small price gap. "Best start" is the activation date that covers the most value —
+         you don't have to start the pass on your arrival day.</p>
+    </div>
+  </div>
+
+  <div class="cta">
+    <h2>Planning the whole trip, not just the pass?</h2>
+    <p>The full kit turns this one decision into a complete, ready-to-use Japan trip plan:</p>
+    <ul>
+      <li><strong>This calculator, unlocked</strong> — any route and fare, Green Car and promo pass prices, side trips and what-if changes</li>
+      <li><strong>14-day Golden Route itinerary</strong> (Tokyo → Kyoto → Osaka → Hiroshima) you can adjust day by day</li>
+      <li><strong>47 sightseeing modules</strong> to swap into your plan</li>
+      <li><strong>Budget tracker</strong> in 6 currencies and a <strong>reservation manager</strong> for trains, hotels and tickets</li>
+      <li>Packing list and pre-departure to-dos, in Google Sheets &amp; Excel</li>
+    </ul>
+    <a class="btn btn-cta" href="https://payhip.com/b/IN9Oy?utm_source=jrpass-checker&utm_medium=funnel&utm_campaign=launch" target="_blank" rel="noopener">Get the full kit</a>
+    <div class="price-note">One-time payment · Instant download · Google Sheets &amp; Excel</div>
+  </div>
+
+  <div class="card">
+    <h2>How the verdict works</h2>
+    <ul class="howto">
+      <li>We add up the individual ticket price of every ride for your whole party.</li>
+      <li>For each pass length (7, 14, 21 days), we try every possible start date inside your trip and keep the one that covers the most value.</li>
+      <li>If the best pass saves you more than ¥2,000, the verdict is BUY. If it costs more than ¥2,000 extra, it's SKIP. In between, it's a TOSS-UP.</li>
+    </ul>
+  </div>
+
+  <footer>
+    <p><strong>Disclaimer:</strong> All figures are estimates based on fare data verified in November 2026,
+       using the nationwide JR Pass prices in effect from October 1, 2026 (Ordinary Car): the standard
+       prices charged by authorized sellers (7-day ¥53,000 / 14-day ¥84,000 / 21-day ¥105,000) and the
+       official website's current offer prices (7-day ¥50,000 / 14-day ¥80,000 / 21-day ¥100,000 — a
+       limited-time offer at the pre-increase prices; end date not announced). Prices verified in
+       November 2026. Fares and pass prices can change, and seat availability is not considered.
+       Always confirm current prices and rules with official JR sources before you buy.</p>
+    <p>This is an independent tool. It is not affiliated with, endorsed by, or connected to the JR Group
+       or the official Japan Rail Pass website.</p>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   JR Pass Verdict Checker
+   Calculation rules mirror the reference implementation of the
+   "JR Pass Calculator & Japan Trip Planner Kit" (design v0.2):
+     T     = total individual ticket cost for the whole party
+     V(d)  = covered ticket value of rides dated d .. d+N-1
+     Sup(d)= NOZOMI MIZUHO Ticket supplements inside that window
+     S(d)  = V(d) - Sup(d) - pass price x party
+     best  = max S over every start date d in the trip, N in 7/14/21
+     verdict: S > 2000 -> BUY, S >= -2000 -> TOSS-UP, else SKIP
+   The pass price set depends on the selected purchase route
+   (official website offer prices / authorized seller standard
+   prices) — the kit's two channels in data/pass_prices.csv.
+   Child fare = adult fare / 2, rounded down to the nearest 10 yen.
+   ============================================================ */
+
+// === CORE LOGIC START ===
+const FARES = [{"f":"Tokyo","t":"Odawara","r":3810,"n":null,"u":3280,"sa":null,"sc":null},{"f":"Tokyo","t":"Nagoya","r":11090,"n":11300,"u":10560,"sa":4180,"sc":2090},{"f":"Tokyo","t":"Kyoto","r":13850,"n":14170,"u":13320,"sa":4960,"sc":2480},{"f":"Tokyo","t":"Shin-Osaka","r":14400,"n":14720,"u":13870,"sa":4960,"sc":2480},{"f":"Tokyo","t":"Hiroshima","r":18910,"n":19760,"u":18380,"sa":6500,"sc":3250},{"f":"Tokyo","t":"Hakata (Fukuoka)","r":22750,"n":23810,"u":22220,"sa":8140,"sc":4070},{"f":"Nagoya","t":"Kyoto","r":5700,"n":5910,"u":5170,"sa":2530,"sc":1260},{"f":"Nagoya","t":"Shin-Osaka","r":6470,"n":6680,"u":5940,"sa":2530,"sc":1260},{"f":"Nagoya","t":"Hiroshima","r":14070,"n":14810,"u":13540,"sa":4960,"sc":2480},{"f":"Nagoya","t":"Hakata (Fukuoka)","r":18360,"n":19310,"u":17830,"sa":6500,"sc":3250},{"f":"Kyoto","t":"Shin-Osaka","r":2870,"n":3080,"u":1450,"sa":null,"sc":null},{"f":"Kyoto","t":"Hiroshima","r":11300,"n":11940,"u":10770,"sa":4170,"sc":2080},{"f":"Kyoto","t":"Hakata (Fukuoka)","r":15930,"n":16780,"u":15400,"sa":5390,"sc":2690},{"f":"Shin-Osaka","t":"Hiroshima","r":10420,"n":10950,"u":9890,"sa":4170,"sc":2080},{"f":"Shin-Osaka","t":"Hakata (Fukuoka)","r":15280,"n":16020,"u":14750,"sa":4960,"sc":2480},{"f":"Hiroshima","t":"Hakata (Fukuoka)","r":9100,"n":9630,"u":8570,"sa":3400,"sc":1700},{"f":"Odawara","t":"Kyoto","r":12300,"n":null,"u":11770,"sa":null,"sc":null},{"f":"Odawara","t":"Shin-Osaka","r":12850,"n":null,"u":12320,"sa":null,"sc":null},{"f":"Shin-Osaka","t":"Himeji","r":3810,"n":4130,"u":3280,"sa":null,"sc":null},{"f":"Narita Airport","t":"Tokyo","r":3140,"n":null,"u":3140,"sa":null,"sc":null},{"f":"Kansai Airport","t":"Shin-Osaka","r":3070,"n":null,"u":2540,"sa":null,"sc":null},{"f":"Kansai Airport","t":"Osaka","r":2910,"n":null,"u":2380,"sa":null,"sc":null},{"f":"Kansai Airport","t":"Kyoto","r":3590,"n":null,"u":3060,"sa":null,"sc":null},{"f":"Kyoto","t":"Nara","r":720,"n":null,"u":720,"sa":null,"sc":null},{"f":"Hiroshima","t":"Miyajimaguchi","r":420,"n":null,"u":420,"sa":null,"sc":null},{"f":"Miyajimaguchi","t":"Miyajima (ferry)","r":200,"n":null,"u":200,"sa":null,"sc":null}];
+const STATIONS = ["Narita Airport","Tokyo","Odawara","Nagoya","Kyoto","Nara","Kansai Airport","Osaka","Shin-Osaka","Himeji","Hiroshima","Miyajimaguchi","Miyajima (ferry)","Hakata (Fukuoka)"];
+// Nationwide JR Pass prices (Ordinary Car), in effect from Oct 1, 2026.
+// The same pass is sold at two prices depending on where you buy it
+// (the kit's two price channels in data/pass_prices.csv):
+//   official - the official JR Pass website, currently selling at the
+//              pre-increase prices as a limited-time offer (end date
+//              not announced)
+//   seller   - authorized sellers / travel agencies (standard prices)
+// Adult/child, Ordinary: official 7d 50,000/25,000, 14d 80,000/40,000,
+// 21d 100,000/50,000; seller 7d 53,000/27,000, 14d 84,000/42,000,
+// 21d 105,000/53,000. Cross-checked against japan-guide.com's price
+// table, which lists the same two price sets (verified Nov 2026).
+const PASS_PRICES = {
+  official: {7:{adult:50000, child:25000}, 14:{adult:80000, child:40000}, 21:{adult:100000, child:50000}},
+  seller:   {7:{adult:53000, child:27000}, 14:{adult:84000, child:42000}, 21:{adult:105000, child:53000}}
+};
+// Same default channel as the kit (the Standard price channel).
+const DEFAULT_CHANNEL = "seller";
+const PASS_DAYS = [7, 14, 21];
+const THRESHOLD_YEN = 2000;
+
+const SEAT_RESERVED = "Reserved";
+const SEAT_NOZOMI = "Reserved - Nozomi/Mizuho";
+const SEAT_UNRESERVED = "Non-reserved";
+
+const FARE_INDEX = {};
+for (const f of FARES) {
+  FARE_INDEX[f.f + "|" + f.t] = f;
+  FARE_INDEX[f.t + "|" + f.f] = f;
+}
+function findFare(from, to) { return FARE_INDEX[from + "|" + to] || null; }
+function connectedStations(from) {
+  const out = [];
+  for (const f of FARES) {
+    if (f.f === from && !out.includes(f.t)) out.push(f.t);
+    if (f.t === from && !out.includes(f.f)) out.push(f.f);
+  }
+  return STATIONS.filter(s => out.includes(s));
+}
+function rounddown10(x) { return Math.floor(x / 10) * 10; }
+
+// One ride. date: "YYYY-MM-DD" string or null.
+function evaluateLeg(leg, adults, children) {
+  const fare = findFare(leg.from, leg.to);
+  if (!fare) return { adultFare: 0, childFare: 0, partyCost: 0, coveredValue: 0, suppParty: 0, nozomiNotSold: false, missing: true };
+  let adult;
+  if (leg.seat === SEAT_NOZOMI) adult = (fare.n !== null && fare.n !== undefined) ? fare.n : fare.r;
+  else if (leg.seat === SEAT_UNRESERVED) adult = fare.u;
+  else adult = fare.r;
+  const child = rounddown10(adult / 2);
+  // NOZOMI MIZUHO Ticket supplement (only where that ticket is sold for the section)
+  let suppA = 0, suppC = 0, nozomiNotSold = false;
+  if (leg.seat === SEAT_NOZOMI) {
+    if (fare.sa !== null && fare.sa !== undefined) { suppA = fare.sa; suppC = fare.sc || 0; }
+    else nozomiNotSold = true;
+  }
+  const partyCost = adults * adult + children * child;
+  return {
+    adultFare: adult, childFare: child,
+    partyCost: partyCost,
+    coveredValue: partyCost, // every route in this fare table is covered by the nationwide pass
+    suppParty: adults * suppA + children * suppC,
+    nozomiNotSold: nozomiNotSold, missing: false
+  };
+}
+
+function dayNum(dateStr) { // "YYYY-MM-DD" -> integer day number (UTC)
+  const p = dateStr.split("-");
+  return Math.floor(Date.UTC(+p[0], +p[1] - 1, +p[2]) / 86400000);
+}
+function dateStr(day) {
+  const d = new Date(day * 86400000);
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return d.getUTCFullYear() + "-" + m + "-" + dd;
+}
+
+// legs: [{date, from, to, seat}] — returns the full verdict calculation.
+// channel: "official" or "seller" (which pass price set to use).
+function computeVerdict(legs, adults, children, channel) {
+  const priceTable = PASS_PRICES[channel] || PASS_PRICES[DEFAULT_CHANNEL];
+  const evaluated = legs.map(l => ({
+    leg: l,
+    res: evaluateLeg(l, adults, children),
+    day: l.date ? dayNum(l.date) : null
+  }));
+  const total = evaluated.reduce((s, e) => s + e.res.partyCost, 0);
+  const dated = evaluated.filter(e => e.day !== null && !e.res.missing);
+  if (dated.length === 0 || total <= 0) {
+    return { total: total, verdict: "EMPTY", bestDays: null, bestSaving: 0, options: {} };
+  }
+  const tripStart = Math.min.apply(null, dated.map(e => e.day));
+  const tripEnd = Math.max.apply(null, dated.map(e => e.day));
+  const spanDays = tripEnd - tripStart + 1;
+
+  const options = {};
+  for (const n of PASS_DAYS) {
+    const pp = priceTable[n];
+    const passCost = adults * pp.adult + children * pp.child;
+    let best = null;
+    for (let k = 0; k < spanDays; k++) {
+      const start = tripStart + k, end = start + n - 1;
+      let v = 0, sup = 0, outside = 0;
+      for (const e of dated) {
+        if (e.day >= start && e.day <= end) { v += e.res.coveredValue; sup += e.res.suppParty; }
+        else outside++;
+      }
+      const s = v - sup - passCost;
+      if (best === null || s > best.saving) {
+        best = { saving: s, startDay: start, covered: v, supp: sup, outside: outside };
+      }
+    }
+    options[n] = {
+      days: n, passCost: passCost, bestSaving: best.saving, bestStart: dateStr(best.startDay),
+      bestCovered: best.covered, bestSupp: best.supp, outside: best.outside,
+      totalWithPass: total - best.saving
+    };
+  }
+  // Prefer the shorter pass on ties.
+  let bestDays = null, bestSaving = null;
+  for (const n of PASS_DAYS) {
+    if (bestSaving === null || options[n].bestSaving > bestSaving) {
+      bestSaving = options[n].bestSaving; bestDays = n;
+    }
+  }
+  const verdict = bestSaving > THRESHOLD_YEN ? "BUY" : (bestSaving >= -THRESHOLD_YEN ? "TOSS-UP" : "SKIP");
+  return { total: total, verdict: verdict, bestDays: bestDays, bestSaving: bestSaving, options: options };
+}
+// === CORE LOGIC END ===
+
+/* ---------------- UI ---------------- */
+const yen = n => "¥" + Math.round(n).toLocaleString("en-US");
+const legsEl = document.getElementById("legs");
+const resultsEl = document.getElementById("results");
+let legSeq = 0;
+
+function stationOptions(selected) {
+  return STATIONS.map(s => `<option value="${s}"${s === selected ? " selected" : ""}>${s}</option>`).join("");
+}
+function toOptions(from, selected) {
+  return connectedStations(from).map(s => `<option value="${s}"${s === selected ? " selected" : ""}>${s}</option>`).join("");
+}
+function fmtDateInput(dayOffset) {
+  const d = new Date(Date.now() + dayOffset * 86400000);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + m + "-" + dd;
+}
+
+function addLeg(data) {
+  legSeq++;
+  const div = document.createElement("div");
+  div.className = "leg";
+  div.innerHTML = `
+    <div class="leg-head">
+      <span class="leg-title">Ride ${legSeq}</span>
+      <button type="button" class="leg-remove">Remove</button>
+    </div>
+    <div class="leg-grid">
+      <div class="full">
+        <label>Date</label>
+        <input type="date" class="leg-date" value="${data.date}">
+      </div>
+      <div>
+        <label>From</label>
+        <select class="leg-from">${stationOptions(data.from)}</select>
+      </div>
+      <div>
+        <label>To</label>
+        <select class="leg-to">${toOptions(data.from, data.to)}</select>
+      </div>
+      <div class="full">
+        <label>Seat type</label>
+        <select class="leg-seat">
+          <option value="${SEAT_RESERVED}"${data.seat === SEAT_RESERVED ? " selected" : ""}>Reserved seat</option>
+          <option value="${SEAT_NOZOMI}"${data.seat === SEAT_NOZOMI ? " selected" : ""}>Nozomi / Mizuho (fastest)</option>
+          <option value="${SEAT_UNRESERVED}"${data.seat === SEAT_UNRESERVED ? " selected" : ""}>Non-reserved seat</option>
+        </select>
+      </div>
+    </div>
+    <div class="leg-fare"><span class="lf-text"></span><span class="amt lf-amt"></span></div>
+    <div class="leg-warn" style="display:none"></div>`;
+  legsEl.appendChild(div);
+
+  const fromSel = div.querySelector(".leg-from");
+  const toSel = div.querySelector(".leg-to");
+  fromSel.addEventListener("change", () => {
+    const cur = toSel.value;
+    toSel.innerHTML = toOptions(fromSel.value, cur);
+    if (!connectedStations(fromSel.value).includes(cur)) toSel.selectedIndex = 0;
+    refresh();
+  });
+  div.querySelector(".leg-remove").addEventListener("click", () => { div.remove(); renumber(); refresh(); });
+  div.querySelectorAll("select,input").forEach(el => el.addEventListener("change", refresh));
+  refresh();
+}
+function renumber() {
+  legsEl.querySelectorAll(".leg .leg-title").forEach((el, i) => el.textContent = "Ride " + (i + 1));
+}
+function readLegs() {
+  const legs = [];
+  legsEl.querySelectorAll(".leg").forEach(div => {
+    legs.push({
+      date: div.querySelector(".leg-date").value || null,
+      from: div.querySelector(".leg-from").value,
+      to: div.querySelector(".leg-to").value,
+      seat: div.querySelector(".leg-seat").value,
+      _el: div
+    });
+  });
+  return legs;
+}
+function partySize() {
+  const a = Math.min(10, Math.max(1, parseInt(document.getElementById("adults").value || "1", 10)));
+  const c = Math.min(10, Math.max(0, parseInt(document.getElementById("children").value || "0", 10)));
+  return { adults: a, children: c };
+}
+
+function refresh() {
+  const { adults, children } = partySize();
+  const legs = readLegs();
+  // per-leg fare lines
+  for (const l of legs) {
+    const r = evaluateLeg(l, adults, children);
+    const fareEl = l._el.querySelector(".lf-text");
+    const amtEl = l._el.querySelector(".lf-amt");
+    const warnEl = l._el.querySelector(".leg-warn");
+    if (r.missing) {
+      fareEl.textContent = "Route not in this checker";
+      amtEl.textContent = "";
+    } else {
+      fareEl.textContent = `${l.from} → ${l.to} · ${yen(r.adultFare)} per adult`;
+      amtEl.textContent = children > 0 || adults > 1 ? yen(r.partyCost) + " for your party" : yen(r.partyCost);
+    }
+    if (r.nozomiNotSold) {
+      warnEl.style.display = "block";
+      warnEl.textContent = "Note: Nozomi/Mizuho trains don't serve this section (or the pass's NOZOMI MIZUHO Ticket isn't sold for it), so the reserved-seat fare for a Hikari/Kodama-type service is used.";
+    } else {
+      warnEl.style.display = "none";
+    }
+  }
+  const channel = document.getElementById("channel").value;
+  const result = computeVerdict(legs.map(({ _el, ...rest }) => rest), adults, children, channel);
+  renderResults(result);
+}
+
+function renderResults(r) {
+  if (r.verdict === "EMPTY") { resultsEl.style.display = "none"; return; }
+  resultsEl.style.display = "block";
+  const banner = document.getElementById("verdictBanner");
+  const word = document.getElementById("verdictWord");
+  const head = document.getElementById("verdictHead");
+  const diff = document.getElementById("verdictDiff");
+  const best = r.options[r.bestDays];
+  banner.className = "verdict-banner " + (r.verdict === "BUY" ? "verdict-buy" : r.verdict === "TOSS-UP" ? "verdict-toss" : "verdict-skip");
+  word.textContent = r.verdict;
+  if (r.verdict === "BUY") {
+    head.textContent = `The ${r.bestDays}-day JR Pass looks worth it for this trip.`;
+    diff.textContent = `Estimated saving: ${yen(r.bestSaving)} vs. buying individual tickets (pass started on ${best.bestStart}).`;
+  } else if (r.verdict === "TOSS-UP") {
+    head.textContent = `It's genuinely close — the ${r.bestDays}-day pass is within ${yen(THRESHOLD_YEN)} of individual tickets.`;
+    diff.textContent = r.bestSaving >= 0
+      ? `Estimated difference: the pass is about ${yen(r.bestSaving)} cheaper. Flexibility may tip the choice.`
+      : `Estimated difference: individual tickets are about ${yen(-r.bestSaving)} cheaper. The pass's flexibility may still be worth it.`;
+  } else {
+    head.textContent = `Individual tickets are the better deal for this trip.`;
+    diff.textContent = `Estimated extra cost of the cheapest pass option (${r.bestDays}-day): ${yen(-r.bestSaving)}. Save your money for the trip itself.`;
+  }
+  document.getElementById("totalIndividual").textContent = yen(r.total);
+  document.getElementById("totalWithPass").textContent = yen(best.totalWithPass);
+
+  const rows = document.getElementById("passRows");
+  rows.innerHTML = "";
+  for (const n of PASS_DAYS) {
+    const o = r.options[n];
+    const isBest = n === r.bestDays;
+    const row = document.createElement("div");
+    row.className = "pass-row" + (isBest ? " best" : "");
+    const diffTxt = o.bestSaving >= 0
+      ? `<span class="pos">saves ${yen(o.bestSaving)}</span>`
+      : `<span class="neg">costs ${yen(-o.bestSaving)} more</span>`;
+    const coverTxt = o.outside === 0
+      ? "Covers all your rides"
+      : `Covers most value; ${o.outside} ride(s) fall outside the best window and are paid separately (already counted in the total)`;
+    row.innerHTML = `
+      <div class="prow-top">
+        <span class="pname">${n}-day pass · ${yen(o.passCost)}${isBest ? '<span class="best-tag">BEST OPTION</span>' : ""}</span>
+        <span class="pdiff">${diffTxt}</span>
+      </div>
+      <div class="pmeta">Best start: <strong>${o.bestStart}</strong> · Rides covered in window: ${yen(o.bestCovered)}` +
+      (o.bestSupp > 0 ? ` · Nozomi/Mizuho supplements: ${yen(o.bestSupp)}` : "") +
+      ` · Total with this pass: ${yen(o.totalWithPass)}<br>${coverTxt}</div>`;
+    rows.appendChild(row);
+  }
+}
+
+document.getElementById("addLeg").addEventListener("click", () => {
+  const legs = readLegs();
+  const last = legs[legs.length - 1];
+  addLeg({
+    date: last ? last.date : fmtDateInput(30),
+    from: last ? last.to : "Tokyo",
+    to: last ? (connectedStations(last.to)[0] || "Kyoto") : "Kyoto",
+    seat: SEAT_RESERVED
+  });
+});
+document.getElementById("adults").addEventListener("change", refresh);
+document.getElementById("children").addEventListener("change", refresh);
+document.getElementById("channel").addEventListener("change", refresh);
+
+// Sample itinerary (the classic Golden Route), starting 30 days from today.
+addLeg({ date: fmtDateInput(30), from: "Tokyo", to: "Kyoto", seat: SEAT_RESERVED });
+addLeg({ date: fmtDateInput(32), from: "Kyoto", to: "Shin-Osaka", seat: SEAT_RESERVED });
+addLeg({ date: fmtDateInput(34), from: "Shin-Osaka", to: "Hiroshima", seat: SEAT_RESERVED });
+addLeg({ date: fmtDateInput(36), from: "Hiroshima", to: "Tokyo", seat: SEAT_RESERVED });
+refresh();
+</script>
+</body>
+</html>
